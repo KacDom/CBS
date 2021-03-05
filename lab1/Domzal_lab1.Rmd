@@ -1,0 +1,33 @@
+---
+title: "lab1"
+author: "Kacper Domzal"
+date: "05/03/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(data.table)
+library(Biobase)
+library(GEOquery)
+library(tidyverse)
+library(RColorBrewer)
+library(gplots)
+library(ggplot2)
+```
+
+# Downloading and preparing data for visualizaion
+```{r data}
+dat <- getGEO('GDS39', destdir=".")
+geneexp <- Table(dat)
+geneexp.tidy <- gather(geneexp, key="Samples", value="GeneExp", -c(1,2))
+rows_missing <- apply(geneexp.tidy, 1, function(x) any(is.na(x)))
+geneexp.tidy.complete <- geneexp.tidy[!rows_missing,]
+```
+# Drawing a heapmap using ggplot2
+```{r heatmap}
+ggplot(geneexp.tidy.complete, aes(x=Samples, y=IDENTIFIER, fill=GeneExp)) + 
+  geom_tile() +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "yellow", midpoint = 0, limits=c(-3,3)) +
+  theme(axis.text.y=element_blank()) +
+  theme(axis.text.x = element_text(angle = 90))
+```
