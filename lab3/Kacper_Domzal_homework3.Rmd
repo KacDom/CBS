@@ -1,0 +1,130 @@
+---
+title: "Untitled"
+author: "Kacper Domżał"
+date: "20 03 2021"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(RColorBrewer)
+library(gplots)
+library(ggplot2)
+library(data.table)
+library(devtools)
+library(Biobase)
+library(limma)
+library(edge)
+library(genefilter)
+library(qvalue)
+library(tidyverse)
+library(data.table)
+library(corpcor)
+library(irlba)
+library(Rtsne)
+```{r dataandmodule, echo=FALSE}
+library(RColorBrewer)
+library(gplots)
+library(ggplot2)
+library(data.table)
+library(devtools)
+library(Biobase)
+library(limma)
+library(edge)
+library(genefilter)
+library(qvalue)
+library(tidyverse)
+library(data.table)
+library(corpcor)
+con = url("http://bowtie-bio.sourceforge.net/recount/ExpressionSets/bottomly_eset.RData")
+load(file=con)
+save(bottomly.eset, file="bottomly.Rdata")
+load(file="bottomly.Rdata")
+edata <- as.matrix(exprs(bottomly.eset))
+edata <- edata[rowMeans(edata) > 10, ]
+edata <- log2(as.matrix(edata) + 1)
+my_palette <- colorRampPalette(c("blue", "white", "orange"))(n = 299)
+```
+
+
+
+Homework Problem 1: Make one heatmap of the aforementioned Bottomly data with 
+the following options:
+a) both rows and columns are clustered, 
+b) show a dendrogram only on the columns., 
+and c) scale in the column direction. Send only one heatmap. 
+```{r problem1}
+png("Domzal_problem1.png",height=2500,width=2500)
+heatmap.2(edata,
+          main = "Bottomly et al. Clustered", # heat map title
+          notecol="black",      # change font color of cell labels to black
+          density.info="none",  # turns off density plot inside color legend
+          trace="none",         # turns off trace lines inside the heat map
+          margins =c(12,9),     # widens margins around plot
+          col=my_palette,       # use on color palette defined earlier 
+          dendrogram="column",     # only draw a row dendrogram
+          scale = "column",
+          Rowv = TRUE,
+          Colv = "Rowv")
+dev.off()
+```
+
+Homework Problem 2: As shown in the plot above, the projection on the top 2 PCs doesn’t show the 
+grouping by the strains. But we have many PCs to explore. Explore different combinations of PCs in scatter plots
+while coloring the data points by the genetic strains. 
+Find a combination of PCs that separate the strains well. Send only one scatterplot.
+```{r problem2}
+png("Domzal_problem2.png",height=800,width=800)
+edata = t(scale(t(edata), scale=FALSE, center=TRUE))
+svd.out = svd(edata)
+PC.v = data.table(svd.out$v,pData(bottomly.eset))
+ggplot(PC.v) + geom_point(aes(x=V3, y=V2, col=as.factor(experiment.number)))
+dev.off()
+```
+
+Homework Problem 3: Make a scatter plot of the top 2 left singular vectors.
+Find a combination of PCs that separate the strains well. Send only one scatterplot.
+```{r problem3}
+png("Domzal_problem3.png",height=700,width=700)
+PC_u = data.table(svd.out$u, pData(bottomly.eset)) 
+ggplot(PC_u) + geom_point(aes(x=V1, y=V2, col=as.factor(strain))) + ggtitle("Scatter plot of the top 2 left singular vectors") 
+dev.off()
+
+```
+
+
+Homework Problem 4: Make one figure that contains violin plots of the top 5 left singular vectors (loadings). 
+Hint/To-do: Make sure turn the top 5 left singular vectors into a data.table (or a data.frame) and 
+ggplot2 to plot them altogether.
+```{r problem4}
+png("Domzal_problem4.png", height=700, width=700)
+violin_data = as.data.frame(PC_u[, 1:5])  
+violin_data_stacked = stack(violin_data)  
+colnames(violin_data_stacked) = c("Val", "principle_comp")  
+ggplot(violin_data_stacked, aes(x = principle_comp, y = Val)) +  
+  geom_violin() + 
+  ggtitle("Violin plots of the top 5 left singular vectors")
+dev.off()
+
+```
+
+Homework Problem 5: Cluster the genes (rows) using K-means clustering (function kmeans()) 
+on the original data, with k=5 clusters. Then, create a 2-dimensional t-SNE projection 
+(as done previously) while using the 5 clusters to color the data points corresponding to genes.
+```{r problem5}
+set.seed(1)
+tsne_out <- Rtsne(edata,pca=TRUE,perplexity=30)
+tsne_out = data.table(tsne_out$Y)
+kmeans = kmeans(x = edata, centers = 5)
+edata_cluster_kmeans <- as.character(kmeans$cluster)
+tsne_out$kmeans <- edata_cluster_kmeans
+png("Domzal_problem5.png", height=1500, width=1500)
+ggplot(tsne_out) + geom_point(aes(x=V1, y=V2, col=as.factor(kmeans)))
+dev.off()
+
+```
+
+
